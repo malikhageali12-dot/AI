@@ -20,7 +20,7 @@ const port = Number.isInteger(configuredPort) && configuredPort >= 1 && configur
 const chatModel = safeModelName(process.env.GROQ_MODEL) || defaultChatModel;
 const sitePassword = process.env.SITE_PASSWORD?.trim() || "";
 const passwordDigest = createHash("sha256").update(sitePassword).digest();
-const sessionCookieName = "lumen_session";
+const sessionCookieName = "malikai_session";
 const sessionDurationSeconds = 12 * 60 * 60;
 const sessionDurationMs = sessionDurationSeconds * 1000;
 const loginWindowMs = 15 * 60 * 1000;
@@ -264,7 +264,7 @@ async function handleChat(request, response) {
   const body = await readJson(request);
   const mathFormattingInstruction = {
     role: "system",
-    content: "Du bist Lumen, ein hilfreicher Assistent. Antworte in der Sprache des Nutzers. Wenn Mathematik vorkommt, schreibe mathematische Formeln mit LaTeX und setze Inline-Formeln in \\( ... \\), eigenständige Formeln in \\[ ... \\]. Nutze zum Beispiel \\sqrt{x} für Quadratwurzeln, \\sqrt[3]{x} für Kubikwurzeln, x^{2} für Potenzen, x_{1} für Indizes und \\frac{a}{b} für Brüche. Setze jede eigenständige Formel auf eine eigene Zeile und schreibe Formeln nicht in Codeblöcke. Schreibe außerhalb von Formelklammern keine LaTeX-Befehle: verwende im Fließtext Unicode-Zeichen wie π, ≤, ≥, ≠, ∞ und ×.",
+    content: "Du bist MalikAI, ein hilfreicher Assistent. Antworte in der Sprache des Nutzers. Wenn Mathematik vorkommt, schreibe mathematische Formeln mit LaTeX und setze Inline-Formeln in \\( ... \\), eigenständige Formeln in \\[ ... \\]. Nutze zum Beispiel \\sqrt{x} für Quadratwurzeln, \\sqrt[3]{x} für Kubikwurzeln, x^{2} für Potenzen, x_{1} für Indizes und \\frac{a}{b} für Brüche. Setze jede eigenständige Formel auf eine eigene Zeile und schreibe Formeln nicht in Codeblöcke. Schreibe außerhalb von Formelklammern keine LaTeX-Befehle: verwende im Fließtext Unicode-Zeichen wie π, ≤, ≥, ≠, ∞ und ×.",
   };
   const messages = [mathFormattingInstruction, ...validateChatMessages(body.messages)];
   const apiKey = process.env.GROQ_API_KEY?.trim();
@@ -549,7 +549,7 @@ const server = createServer((request, response) => {
 
 const listenAddress = publicOrigin ? "0.0.0.0" : "127.0.0.1";
 server.listen(port, listenAddress, () => {
-  console.log(`Lumen Chat Web läuft auf ${publicOrigin || `http://127.0.0.1:${port}`}`);
+  console.log(`MalikAI Web läuft auf ${publicOrigin || `http://127.0.0.1:${port}`}`);
   console.log("Anmeldung und API-Schlüssel werden nur im Serverprozess verwaltet.");
 });
 

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f3ee">
+    <meta name="description" content="Lumen Chat — eine geschützte KI-Werkstatt für Chats und Bilder.">
+    <title>Lumen Chat — Programmiert von Malik Hage-Ali</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/script.js" defer></script>
+  </head>
+  <body>
+    <main class="auth-shell" id="authGate">
+      <section class="auth-story" aria-label="Über Lumen Chat">
+        <a class="auth-brand" href="/" aria-label="Lumen Chat Startseite">
+          <span class="brand-mark" aria-hidden="true">L</span>
+          <span class="brand-copy"><strong>Lumen</strong><small>DEINE KI-WERKSTATT</small></span>
+        </a>
+        <div class="auth-story-copy">
+          <span class="auth-eyebrow"><span aria-hidden="true">✦</span> EIN RAUM FÜR DEINE IDEEN</span>
+          <h1>Gedanken werden<br><em>sichtbar.</em></h1>
+          <p>Entdecke Ideen, stelle Fragen und erschaffe Bilder – alles an einem Ort.</p>
+          <div class="auth-feature-list" aria-label="Funktionen">
+            <span><i aria-hidden="true">◌</i> Mit KI ins Gespräch kommen</span>
+            <span><i aria-hidden="true">✳</i> Eigene Bilder gestalten</span>
+          </div>
+        </div>
+        <div class="auth-credit">Programmiert von <strong>Malik Hage-Ali</strong></div>
+      </section>
+
+      <section class="auth-panel" aria-labelledby="authTitle">
+        <div class="auth-panel-top"><span class="auth-lock" aria-hidden="true">⌑</span><span>GESCHÜTZTER ZUGANG</span></div>
+        <div class="auth-card">
+          <span class="auth-card-kicker">WILLKOMMEN BEI LUMEN</span>
+          <h2 id="authTitle">Schön, dass du da bist.</h2>
+          <p class="auth-intro">Gib das Zugangspasswort ein, um deinen kreativen Raum zu öffnen.</p>
+          <form id="authForm" class="auth-form">
+            <label for="authPassword">Zugangspasswort</label>
+            <div class="auth-input-wrap"><span aria-hidden="true">◇</span><input id="authPassword" name="password" type="password" autocomplete="current-password" maxlength="256" placeholder="Dein Passwort" required></div>
+            <p class="auth-feedback" id="authFeedback" role="alert" hidden></p>
+            <button class="auth-submit" id="authSubmit" type="submit"><span>Website öffnen</span><span aria-hidden="true">↗</span></button>
+          </form>
+          <div class="auth-privacy"><span aria-hidden="true">◈</span><span>Dein Zugang wird sicher geprüft. Das Passwort wird nicht in deinem Browser gespeichert.</span></div>
+        </div>
+        <div class="auth-panel-credit">Programmiert von <strong>Malik Hage-Ali</strong></div>
+      </section>
+    </main>
+
+    <div class="app-shell" id="app" data-theme="light" hidden>
+      <aside class="sidebar" id="sidebar" aria-label="Hauptmenü">
+        <div class="brand-row">
+          <a class="brand" href="/" aria-label="Lumen Chat Startseite">
+            <span class="brand-mark" aria-hidden="true">L</span>
+            <span class="brand-copy"><strong>Lumen</strong><small>DEINE KI-WERKSTATT</small></span>
+          </a>
+          <button class="icon-button sidebar-close" id="sidebarClose" type="button" aria-label="Menü schließen">×</button>
+        </div>
+
+        <button class="new-chat-button" id="newChat" type="button"><span aria-hidden="true">＋</span> Neuer Chat <kbd>Ctrl K</kbd></button>
+
+        <nav class="primary-nav" aria-label="Bereiche">
+          <button class="nav-item is-active" id="chatNav" data-view="chat" type="button"><span class="nav-icon" aria-hidden="true">◌</span><span>Chat</span><span class="nav-arrow" aria-hidden="true">↗</span></button>
+          <button class="nav-item" id="imagesNav" data-view="images" type="button"><span class="nav-icon image-nav-icon" aria-hidden="true">✳</span><span>Bild erstellen</span><span class="nav-arrow" aria-hidden="true">↗</span></button>
+        </nav>
+
+        <div class="history-heading"><span>Deine Gespräche</span><span class="history-count" id="conversationCount">0</span></div>
+        <label class="search-box"><span aria-hidden="true">⌕</span><input id="conversationSearch" type="search" placeholder="Gespräche suchen" autocomplete="off" aria-label="Gespräche durchsuchen"></label>
+        <div class="conversation-list" id="conversationList" aria-label="Gesprächsverlauf"></div>
+
+        <div class="sidebar-bottom">
+          <div class="provider-summary" id="providerSummary"><span class="provider-light" aria-hidden="true"></span><span>Verbindung wird geprüft …</span></div>
+          <button class="nav-item utility-nav" id="settingsOpen" type="button"><span class="nav-icon" aria-hidden="true">⚙</span><span>Einstellungen</span></button>
+          <button class="nav-item utility-nav" id="themeToggle" type="button"><span class="nav-icon" id="themeIcon" aria-hidden="true">◐</span><span id="themeLabel">Dunkles Design</span></button>
+          <button class="nav-item utility-nav logout-button" id="logoutButton" type="button"><span class="nav-icon" aria-hidden="true">↗</span><span>Abmelden</span></button>
+          <div class="sidebar-credit">Programmiert von<br><strong>Malik Hage-Ali</strong></div>
+        </div>
+      </aside>
+
+      <button class="mobile-scrim" id="mobileScrim" type="button" aria-label="Menü schließen" hidden></button>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div class="topbar-context">
+            <button class="icon-button menu-button" id="menuToggle" type="button" aria-label="Menü öffnen">☰</button>
+            <div class="page-title-wrap"><h1 id="pageTitle">Lumen</h1><span class="model-pill" id="modelPill"><span class="model-dot"></span> GROQ CHAT</span></div>
+          </div>
+          <div class="topbar-actions"><span class="creator-credit"><span class="credit-sparkle" aria-hidden="true">✦</span> Programmiert von Malik Hage-Ali</span><button class="icon-button top-theme-button" id="themeToggleTop" type="button" aria-label="Design wechseln">◐</button></div>
+        </header>
+
+        <section class="chat-view" id="chatView" aria-label="Chat">
+          <div class="welcome-panel" id="welcomePanel">
+            <div class="welcome-kicker"><span class="welcome-orb" aria-hidden="true">✦</span> DEIN KREATIVER RAUM</div>
+            <h2>Was möchtest du<br><span>heute entdecken?</span></h2>
+            <p class="welcome-copy">Stell eine Frage, entwickle eine Idee oder starte ein neues Projekt. Ich bin bereit.</p>
+            <div class="suggestion-grid">
+              <button class="suggestion-card" type="button" data-prompt="Erkläre mir ein spannendes Thema einfach und mit einem Beispiel."><span class="suggestion-icon violet" aria-hidden="true">✳</span><span><strong>Etwas verstehen</strong><small>Ein Thema Schritt für Schritt erklärt</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+              <button class="suggestion-card" type="button" data-prompt="Hilf mir, aus einer ersten Idee einen konkreten Plan zu machen."><span class="suggestion-icon peach" aria-hidden="true">⌁</span><span><strong>Eine Idee entwickeln</strong><small>Vom Gedanken zum nächsten Schritt</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+              <button class="suggestion-card" type="button" data-prompt="Schreibe einen kurzen, freundlichen Text für ..."><span class="suggestion-icon mint" aria-hidden="true">✎</span><span><strong>Etwas schreiben</strong><small>Texte klar und natürlich formulieren</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+              <button class="suggestion-card" id="imageSuggestion" type="button"><span class="suggestion-icon blue" aria-hidden="true">▧</span><span><strong>Ein Bild gestalten</strong><small>Eine Idee in ein Bild verwandeln</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+            </div>
+            <p class="welcome-note"><span aria-hidden="true">⌁</span> Dein Chat wird in diesem Browser gespeichert.</p>
+          </div>
+          <div class="messages" id="messages" aria-live="polite" aria-relevant="additions text"></div>
+          <p class="chat-feedback" id="chatFeedback" role="status" hidden></p>
+        </section>
+
+        <section class="image-view" id="imageView" aria-label="Bildwerkstatt" hidden>
+          <div class="image-layout">
+            <div class="image-intro">
+              <div class="welcome-kicker"><span class="welcome-orb image-orb" aria-hidden="true">✳</span> LUMEN BILDERWERKSTATT</div>
+              <h2>Mach deine Idee<br><span>sichtbar.</span></h2>
+              <p>Beschreibe dein Motiv so, wie du es dir vorstellst. Lumen verwandelt Worte in ein Bild.</p>
+            </div>
+
+            <form class="image-form" id="imageForm">
+              <label class="field-label" for="imagePrompt">Dein Bild-Prompt</label>
+              <textarea id="imagePrompt" rows="5" maxlength="8000" placeholder="Ein stilles Café in Kyoto an einem Regentag, weiches Licht, analoge Filmfotografie …" required></textarea>
+              <div class="prompt-meta"><span>Je genauer deine Beschreibung, desto besser das Ergebnis.</span><span id="promptCount">0 / 8.000</span></div>
+              <div class="image-options">
+                <label class="quality-label" for="imageQuality">Bildqualität</label>
+                <select id="imageQuality" aria-label="Bildqualität">
+                  <option value="low">Niedrig</option>
+                  <option value="medium">Mittel</option>
+                  <option value="high" selected>Hoch</option>
+                </select>
+                <span class="image-model-label"><span class="model-dot"></span> GPT-IMAGE-2.5-FLARE</span>
+              </div>
+              <div class="cost-notice"><span class="notice-icon" aria-hidden="true">i</span><p><strong>Hinweis zu möglichen Kosten</strong><br>Bildgenerierung nutzt die OpenAI API und kann Kosten verursachen. <a href="https://developers.openai.com/api/docs/pricing" target="_blank" rel="noopener noreferrer">Preisübersicht</a>. Vor jeder Anfrage bestätigst du den Auftrag.</p></div>
+              <button class="generate-button" id="generateImage" type="submit"><span aria-hidden="true">✳</span> Bild erstellen <span class="button-arrow" aria-hidden="true">↗</span></button>
+              <p class="image-feedback" id="imageFeedback" role="status" hidden></p>
+            </form>
+
+            <div class="image-result" id="imageResult" hidden>
+              <div class="result-heading"><div><span class="result-overline">DEIN ERGEBNIS</span><h3>Frisch aus der Werkstatt</h3></div><span class="result-badge"><span class="model-dot"></span> 1024 × 1024</span></div>
+              <div class="preview-frame"><img id="generatedImage" alt="Von Lumen generiertes Bild" hidden><div class="preview-placeholder" id="previewPlaceholder"><span class="preview-symbol" aria-hidden="true">✳</span><strong>Dein Bild erscheint hier</strong><small>Es wird nur für diese Sitzung angezeigt.</small></div><div class="generating-overlay" id="generatingOverlay" hidden><span class="spinner"></span><strong>Lumen gestaltet dein Bild …</strong><small>Das kann einen Moment dauern.</small></div></div>
+              <div class="result-actions"><p id="imagePromptCaption"></p><button class="save-image-button" id="saveImage" type="button" disabled><span aria-hidden="true">↓</span> PNG speichern</button></div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="composer-wrap" id="chatComposer">
+          <form class="composer" id="chatForm">
+            <textarea id="chatInput" rows="1" maxlength="8000" placeholder="Frag Lumen etwas …" aria-label="Nachricht an Lumen" required></textarea>
+            <div class="composer-bottom"><span class="composer-hint"><span aria-hidden="true">↵</span> Enter zum Senden · Shift + Enter für eine neue Zeile</span><div class="composer-actions"><span class="composer-provider"><span class="model-dot"></span> Groq</span><button class="send-button" id="sendButton" type="submit" aria-label="Nachricht senden"><span aria-hidden="true">↑</span></button><button class="stop-button" id="stopButton" type="button" hidden>Stoppen <span aria-hidden="true">■</span></button></div></div>
+          </form>
+          <p class="composer-disclaimer">Lumen kann sich irren. Prüfe wichtige Informationen bitte selbst.</p>
+        </footer>
+      </main>
+    </div>
+
+    <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+      <div class="dialog-heading"><div><span class="dialog-overline">DEINE APP</span><h2 id="settingsTitle">Verbindung & Schlüssel</h2></div><button class="icon-button dialog-close" id="settingsClose" type="button" aria-label="Einstellungen schließen">×</button></div>
+      <p class="dialog-intro">API-Schlüssel bleiben auf dem Website-Server. Dein Chatverlauf liegt im Speicher dieses Browsers und ist dort nicht verschlüsselt.</p>
+      <div class="credential-card"><div class="credential-icon groq-icon" aria-hidden="true">◌</div><div class="credential-info"><strong>Groq · Chat</strong><span id="groqStatus">Status wird geprüft …</span></div><span class="credential-indicator" id="groqIndicator"></span></div>
+      <div class="credential-card"><div class="credential-icon openai-icon" aria-hidden="true">✳</div><div class="credential-info"><strong>OpenAI · Bilder</strong><span id="openAiStatus">Status wird geprüft …</span></div><span class="credential-indicator" id="openAiIndicator"></span></div>
+      <div class="env-instructions"><strong>Schlüssel einrichten</strong><p>Bei einer lokalen Installation trägst du die Schlüssel in die Datei <code>.env</code> ein. Auf einer öffentlichen Website werden sie als geheime Umgebungsvariablen beim Hosting-Anbieter hinterlegt.</p><pre>GROQ_API_KEY=dein_schluessel
+OPENAI_API_KEY=dein_schluessel</pre><p>Die `.env`-Datei ist vom Git-Commit ausgeschlossen. Teile sie nicht und lade sie nicht hoch.</p></div>
+      <div class="dialog-note"><span aria-hidden="true">⌁</span><span>Bildgenerierung über OpenAI kann Kosten verursachen. Chatnachrichten werden an Groq gesendet.</span></div>
+      <div class="dialog-footer"><span id="configuredModel">Modell: —</span><button class="dialog-done" id="settingsDone" type="button">Fertig</button></div>
+    </dialog>
+  </body>
+</html>

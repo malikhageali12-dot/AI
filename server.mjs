@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { dirname, extname, resolve } from "node:path";
+import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectDirectory = dirname(fileURLToPath(import.meta.url));
@@ -58,6 +58,7 @@ const staticFiles = new Map([
   ["/", "index.html"],
   ["/index.html", "index.html"],
   ["/style.css", "style.css"],
+  ["/mathjax-config.js", "mathjax-config.js"],
   ["/script.js", "script.js"],
 ]);
 
@@ -263,7 +264,7 @@ async function handleChat(request, response) {
   const body = await readJson(request);
   const mathFormattingInstruction = {
     role: "system",
-    content: "Du bist Lumen, ein hilfreicher Assistent. Antworte in der Sprache des Nutzers. Wenn Mathematik vorkommt, schreibe Formeln gut lesbar mit Unicode-Mathezeichen und setze Inline-Formeln in \\( ... \\), eigenständige Formeln in \\[ ... \\]. Verwende Quadratwurzeln wie √(x), Kubikwurzeln wie ∛(x) und n-te Wurzeln wie ⁴√(x); Potenzen und Indizes möglichst hoch- oder tiefgestellt wie x², xⁿ und a₁. Nutze außerdem passende Zeichen wie π, α, β, θ, ∑, ∫, ∞, ≈, ≤, ≥, ≠, ∈, →, ±, ×, · und ÷. Verwende dafür keine LaTeX-Befehle wie \\sqrt oder \\frac und keine Codeblöcke. Falls ein Zeichen keine passende Unicode-Hochstellung hat, schreibe die Potenz als x^(n+1).",
+    content: "Du bist Lumen, ein hilfreicher Assistent. Antworte in der Sprache des Nutzers. Wenn Mathematik vorkommt, schreibe mathematische Formeln mit LaTeX und setze Inline-Formeln in \\( ... \\), eigenständige Formeln in \\[ ... \\]. Nutze zum Beispiel \\sqrt{x} für Quadratwurzeln, \\sqrt[3]{x} für Kubikwurzeln, x^{2} für Potenzen, x_{1} für Indizes und \\frac{a}{b} für Brüche. Setze jede eigenständige Formel auf eine eigene Zeile und schreibe Formeln nicht in Codeblöcke. Schreibe außerhalb von Formelklammern keine LaTeX-Befehle: verwende im Fließtext Unicode-Zeichen wie π, ≤, ≥, ≠, ∞ und ×.",
   };
   const messages = [mathFormattingInstruction, ...validateChatMessages(body.messages)];
   const apiKey = process.env.GROQ_API_KEY?.trim();
@@ -434,6 +435,40 @@ async function handleImageGeneration(request, response) {
 }
 
 async function serveStatic(pathname, response) {
+  const mathjaxPrefix = "/mathjax/";
+  if (pathname.startsWith(mathjaxPrefix)) {
+    const segments = pathname.slice(mathjaxPrefix.length).split("/");
+    if (!segments.length || segments.some((segment) => !/^[A-Za-z0-9_.-]+$/.test(segment) || segment === "." || segment === "..")) return false;
+
+    const mathjaxDirectory = resolve(projectDirectory, "node_modules", "mathjax");
+    const filePath = resolve(mathjaxDirectory, ...segments);
+    if (!filePath.startsWith(`${mathjaxDirectory}${sep}`)) return false;
+
+    let content;
+    try {
+      content = await readFile(filePath);
+    } catch (error) {
+      if (error?.code === "ENOENT") return false;
+      throw error;
+    }
+
+    const extension = extname(filePath).toLowerCase();
+    const type = extension === ".css"
+      ? "text/css; charset=utf-8"
+      : extension === ".js" || extension === ".mjs"
+        ? "text/javascript; charset=utf-8"
+        : extension === ".woff2"
+          ? "font/woff2"
+          : extension === ".woff"
+            ? "font/woff"
+            : extension === ".svg"
+              ? "image/svg+xml"
+              : "application/octet-stream";
+    response.writeHead(200, { "Content-Type": type, "Content-Length": content.length });
+    response.end(content);
+    return true;
+  }
+
   const filename = staticFiles.get(pathname);
   if (!filename) return false;
 

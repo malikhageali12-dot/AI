@@ -29,8 +29,10 @@ const generatingOverlay = document.querySelector("#generatingOverlay");
 const saveImageButton = document.querySelector("#saveImage");
 const settingsDialog = document.querySelector("#settingsDialog");
 
-const conversationStorageKey = "lumen.web.conversations.v1";
-const themeStorageKey = "lumen.web.theme";
+const conversationStorageKey = "malikai.web.conversations.v1";
+const themeStorageKey = "malikai.web.theme";
+const previousConversationStorageKey = "lumen.web.conversations.v1";
+const previousThemeStorageKey = "lumen.web.theme";
 const plainMathSymbols = {
   alpha: "α", beta: "β", theta: "θ", lambda: "λ", mu: "μ", sigma: "σ", omega: "ω",
   Delta: "Δ", Sigma: "Σ", pi: "π", times: "×", cdot: "·", div: "÷", pm: "±",
@@ -53,7 +55,11 @@ const state = {
 
 function readTheme() {
   try {
-    return localStorage.getItem(themeStorageKey) === "dark" ? "dark" : "light";
+    const storedTheme = localStorage.getItem(themeStorageKey) ?? localStorage.getItem(previousThemeStorageKey);
+    if (localStorage.getItem(themeStorageKey) === null && storedTheme !== null) {
+      localStorage.setItem(themeStorageKey, storedTheme);
+    }
+    return storedTheme === "dark" ? "dark" : "light";
   } catch {
     return "light";
   }
@@ -62,12 +68,16 @@ function readTheme() {
 function makeId() {
   return typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
-    : `lumen-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    : `malikai-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function loadConversations() {
   try {
-    const stored = JSON.parse(localStorage.getItem(conversationStorageKey) || "[]");
+    const currentData = localStorage.getItem(conversationStorageKey);
+    const previousData = currentData === null ? localStorage.getItem(previousConversationStorageKey) : null;
+    const storedData = currentData ?? previousData ?? "[]";
+    if (currentData === null && previousData !== null) localStorage.setItem(conversationStorageKey, previousData);
+    const stored = JSON.parse(storedData);
     if (!Array.isArray(stored)) return [];
     return stored.filter((conversation) =>
       conversation && typeof conversation.id === "string" && typeof conversation.title === "string" && Array.isArray(conversation.messages),
@@ -243,13 +253,13 @@ function renderMessages() {
     body.className = "message-body";
     const label = document.createElement("p");
     label.className = "message-label";
-    label.textContent = message.role === "user" ? "Du" : "Lumen";
+    label.textContent = message.role === "user" ? "Du" : "MalikAI";
     body.append(label);
 
     if (message.role === "assistant" && !message.content && state.streamController) {
       const dots = document.createElement("span");
       dots.className = "typing-dots";
-      dots.setAttribute("aria-label", "Lumen schreibt");
+      dots.setAttribute("aria-label", "MalikAI schreibt");
       for (let index = 0; index < 3; index += 1) dots.append(document.createElement("i"));
       body.append(dots);
     } else {
@@ -423,7 +433,7 @@ function render() {
   chatComposer.hidden = isImages;
   document.querySelector("#chatNav").classList.toggle("is-active", !isImages);
   document.querySelector("#imagesNav").classList.toggle("is-active", isImages);
-  document.querySelector("#pageTitle").textContent = isImages ? "Bildwerkstatt" : (activeConversation()?.title || "Lumen");
+  document.querySelector("#pageTitle").textContent = isImages ? "Bildwerkstatt" : (activeConversation()?.title || "MalikAI");
   document.querySelector("#modelPill").hidden = isImages;
   renderConversationList();
   renderMessages();
@@ -683,7 +693,7 @@ function saveGeneratedImage() {
     const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `lumen-bild-${new Date().toISOString().slice(0, 10)}.png`;
+    anchor.download = `malikai-bild-${new Date().toISOString().slice(0, 10)}.png`;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();

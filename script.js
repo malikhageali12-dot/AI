@@ -259,10 +259,16 @@ function renderMessages() {
 }
 
 function appendInlineMarkdown(parent, source) {
-  const parts = source.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|_[^_\n]+_)/g);
+  const parts = source.split(/(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|_[^_\n]+_)/g);
   for (const part of parts) {
     if (!part) continue;
-    if (part.startsWith("`") && part.endsWith("`")) {
+    if ((part.startsWith("\\(") && part.endsWith("\\)")) || (part.startsWith("\\[") && part.endsWith("\\]"))) {
+      const display = part.startsWith("\\[");
+      const math = document.createElement("span");
+      math.className = display ? "math-display" : "math-inline";
+      math.textContent = part.slice(2, -2);
+      parent.append(math);
+    } else if (part.startsWith("`") && part.endsWith("`")) {
       const code = document.createElement("code");
       code.textContent = part.slice(1, -1);
       parent.append(code);
@@ -773,3 +779,4 @@ document.addEventListener("keydown", (event) => {
 
 applyTheme();
 void initializeAccess();
+

@@ -16,7 +16,13 @@ Eine passwortgeschützte Webversion von Lumen Chat mit Chat über Groq und Bildg
    PORT=4174
    ```
 
-4. Öffne das VS-Code-Terminal und starte den Server:
+4. Öffne das VS-Code-Terminal und installiere die benötigte Formelsatz-Bibliothek:
+
+   ```powershell
+   npm.cmd install
+   ```
+
+5. Starte den Server:
 
    ```powershell
    npm.cmd start
@@ -24,7 +30,7 @@ Eine passwortgeschützte Webversion von Lumen Chat mit Chat über Groq und Bildg
 
 5. Öffne <http://127.0.0.1:4174>. Zum Beenden drückst du im Terminal `Strg+C`.
 
-Es werden keine zusätzlichen npm-Pakete benötigt. Nach Änderungen an `.env` muss der Server neu gestartet werden. Auf Windows umgeht `npm.cmd start` die PowerShell-Sperre für `npm.ps1`.
+MathJax wird lokal aus dem installierten npm-Paket ausgeliefert und rendert LaTeX-Formeln ohne zusätzliche CDN-Verbindung. Nach Änderungen an `.env` muss der Server neu gestartet werden. Auf Windows umgehen `npm.cmd install` und `npm.cmd start` die PowerShell-Sperre für `npm.ps1`.
 
 ## Öffentlich bereitstellen
 
@@ -57,3 +63,4 @@ Gespräche liegen im Browser-Speicher des jeweiligen Geräts und sind dort nicht
 - OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
 Lokale Schlüssel gehören nur in `.env`. Diese Datei ist von Git und Docker ausgeschlossen. Bei einer öffentlichen Bereitstellung kommen Schlüssel ausschließlich in die geschützte Variablenverwaltung des Hosting-Anbieters. Widerrufe API-Schlüssel, die bereits in einem öffentlichen Chat oder Repository geteilt wurden, und verwende neue.
+

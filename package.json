@@ -1,0 +1,16 @@
+{
+  "name": "lumen-chat-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Passwortgeschützte, öffentlich bereitstellbare Webversion von Lumen Chat",
+  "author": "Malik Hage-Ali",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "check": "node --check server.mjs && node --check script.js"
+  }
+}

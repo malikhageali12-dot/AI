@@ -1,8 +1,8 @@
 {
-  "name": "lumen-chat-website",
+  "name": "malikai-chat-website",
   "version": "1.0.0",
   "private": true,
-  "description": "Passwortgeschützte, öffentlich bereitstellbare Webversion von Lumen Chat",
+  "description": "Passwortgeschützte, öffentlich bereitstellbare Webversion von MalikAI",
   "author": "Malik Hage-Ali",
   "type": "module",
   "engines": {

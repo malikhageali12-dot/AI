@@ -261,7 +261,11 @@ function chatProviderError(status) {
 
 async function handleChat(request, response) {
   const body = await readJson(request);
-  const messages = validateChatMessages(body.messages);
+  const mathFormattingInstruction = {
+    role: "system",
+    content: "Du bist Lumen, ein hilfreicher Assistent. Antworte in der Sprache des Nutzers. Wenn Mathematik vorkommt, schreibe Formeln gut lesbar mit Unicode-Mathezeichen und setze Inline-Formeln in \\( ... \\), eigenständige Formeln in \\[ ... \\]. Verwende Quadratwurzeln wie √(x), Kubikwurzeln wie ∛(x) und n-te Wurzeln wie ⁴√(x); Potenzen und Indizes möglichst hoch- oder tiefgestellt wie x², xⁿ und a₁. Nutze außerdem passende Zeichen wie π, α, β, θ, ∑, ∫, ∞, ≈, ≤, ≥, ≠, ∈, →, ±, ×, · und ÷. Verwende dafür keine LaTeX-Befehle wie \\sqrt oder \\frac und keine Codeblöcke. Falls ein Zeichen keine passende Unicode-Hochstellung hat, schreibe die Potenz als x^(n+1).",
+  };
+  const messages = [mathFormattingInstruction, ...validateChatMessages(body.messages)];
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) throw new HttpError(400, "missing_key", "Trage zuerst GROQ_API_KEY in deiner lokalen .env-Datei ein und starte den Server neu.");
 
@@ -522,3 +526,4 @@ server.on("error", (error) => {
   }
   process.exitCode = 1;
 });
+

@@ -350,7 +350,7 @@ function renderMarkdown(container, source) {
     if (displayMathStart) {
       const closingDelimiter = /\\\]\s*$/;
       const sameLineClose = displayMathStart[1].match(/^(.*?)\\\]\s*$/);
-      const formulaLines = sameLineClose ? [sameLineClose[1]] : null;
+      let formulaLines = sameLineClose ? [sameLineClose[1]] : null;
       let closingIndex = index;
 
       if (!formulaLines) {

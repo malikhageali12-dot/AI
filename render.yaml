@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: lumen-chat
+    name: malikai-chat
     runtime: docker
     plan: free
     healthCheckPath: /api/health
@@ -13,3 +13,4 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: openai/gpt-oss-120b
+

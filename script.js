@@ -31,6 +31,13 @@ const settingsDialog = document.querySelector("#settingsDialog");
 
 const conversationStorageKey = "lumen.web.conversations.v1";
 const themeStorageKey = "lumen.web.theme";
+const plainMathSymbols = {
+  alpha: "α", beta: "β", theta: "θ", lambda: "λ", mu: "μ", sigma: "σ", omega: "ω",
+  Delta: "Δ", Sigma: "Σ", pi: "π", times: "×", cdot: "·", div: "÷", pm: "±",
+  le: "≤", leq: "≤", ge: "≥", geq: "≥", neq: "≠", approx: "≈", infty: "∞",
+  int: "∫", sum: "∑", prod: "∏", sqrt: "√",
+};
+let mathTypesetQueue = Promise.resolve();
 
 const state = {
   conversations: loadConversations(),
@@ -221,6 +228,7 @@ function renderMessages() {
   const conversation = activeConversation();
   const messages = conversation?.messages || [];
   welcomePanel.hidden = messages.length > 0;
+  window.MathJax?.typesetClear?.([messagesElement]);
   messagesElement.replaceChildren();
 
   for (const message of messages) {
@@ -256,6 +264,14 @@ function renderMessages() {
   }
 
   if (state.streamController) messagesElement.scrollTop = messagesElement.scrollHeight;
+  else typesetMathInMessages();
+}
+
+function typesetMathInMessages() {
+  if (!window.MathJax?.typesetPromise) return;
+  mathTypesetQueue = mathTypesetQueue
+    .then(() => window.MathJax?.typesetPromise?.([messagesElement]))
+    .catch(() => {});
 }
 
 function appendInlineMarkdown(parent, source) {
@@ -266,7 +282,7 @@ function appendInlineMarkdown(parent, source) {
       const display = part.startsWith("\\[");
       const math = document.createElement("span");
       math.className = display ? "math-display" : "math-inline";
-      math.textContent = part.slice(2, -2);
+      math.textContent = part;
       parent.append(math);
     } else if (part.startsWith("`") && part.endsWith("`")) {
       const code = document.createElement("code");
@@ -281,9 +297,16 @@ function appendInlineMarkdown(parent, source) {
       emphasis.textContent = part.slice(1, -1);
       parent.append(emphasis);
     } else {
-      parent.append(document.createTextNode(part));
+      parent.append(document.createTextNode(renderPlainMathSymbols(part)));
     }
   }
+}
+
+function renderPlainMathSymbols(source) {
+  return source
+    .replace(/\\sqrt\[3\]\{([^{}]*)\}/g, "∛($1)")
+    .replace(/\\sqrt\{([^{}]*)\}/g, "√($1)")
+    .replace(/\\([A-Za-z]+)\b/g, (match, command) => plainMathSymbols[command] || match);
 }
 
 function renderMarkdown(container, source) {
@@ -321,6 +344,35 @@ function renderMarkdown(container, source) {
       block.append(pre);
       container.append(block);
       continue;
+    }
+
+    const displayMathStart = line.match(/^\s*\\\[(.*)$/);
+    if (displayMathStart) {
+      const closingDelimiter = /\\\]\s*$/;
+      const sameLineClose = displayMathStart[1].match(/^(.*?)\\\]\s*$/);
+      const formulaLines = sameLineClose ? [sameLineClose[1]] : null;
+      let closingIndex = index;
+
+      if (!formulaLines) {
+        for (let candidate = index + 1; candidate < lines.length; candidate += 1) {
+          if (closingDelimiter.test(lines[candidate])) {
+            closingIndex = candidate;
+            break;
+          }
+        }
+        if (closingIndex > index) {
+          formulaLines = [displayMathStart[1], ...lines.slice(index + 1, closingIndex), lines[closingIndex].replace(closingDelimiter, "")];
+        }
+      }
+
+      if (formulaLines) {
+        const formula = document.createElement("div");
+        formula.className = "math-display";
+        formula.textContent = `\\[${formulaLines.join("\n")}\\]`;
+        container.append(formula);
+        index = sameLineClose ? index + 1 : closingIndex + 1;
+        continue;
+      }
     }
 
     const heading = line.match(/^\s*(#{1,3})\s+(.+)$/);

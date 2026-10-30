@@ -120,6 +120,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .message.assistant .message-text { color: #4c4d62; }
 .markdown-content { display: grid; gap: 9px; white-space: normal; }
 .markdown-content p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .markdown-content .math-inline, .markdown-content .math-display { font-family: "Cambria Math", "STIX Two Math", "Segoe UI Symbol", Georgia, serif; font-variant-numeric: lining-nums; }
+  .markdown-content .math-inline { white-space: nowrap; }
+  .markdown-content .math-display { display: block; max-width: 100%; overflow-x: auto; padding: 4px 0; text-align: center; white-space: nowrap; }
 .markdown-content h1, .markdown-content h2, .markdown-content h3 { margin: 5px 0 0; color: var(--text); font-family: Manrope, "Segoe UI", sans-serif; line-height: 1.35; }
 .markdown-content h1 { font-size: 17px; }
 .markdown-content h2 { font-size: 15px; }
@@ -426,3 +429,4 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .auth-feature-list { font-size: 8px; }
   .auth-panel { padding-right: 20px; padding-left: 20px; }
 }
+

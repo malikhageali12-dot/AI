@@ -152,6 +152,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .composer-hint span { display: inline-grid; width: 14px; height: 14px; place-items: center; border: 1px solid var(--line); border-radius: 4px; font-size: 9px; }
 .composer-actions { gap: 10px; }
 .composer-provider { display: flex; align-items: center; gap: 6px; color: var(--text-faint); font-size: 9px; }
+.voice-device-select { width: 126px; max-width: 126px; height: 29px; padding: 0 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text-soft); font-size: 9px; }
+.voice-button { display: grid; width: 29px; height: 29px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--text-soft); cursor: pointer; transition: background .16s, color .16s, border .16s; }
+.voice-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.voice-button:hover { border-color: #b8c7bf; background: #eef3ef; color: var(--accent-dark); }
+.voice-button:disabled { cursor: wait; opacity: .55; }
+.voice-button.is-recording { border-color: #d58b85; background: #fbefec; color: #b64f49; animation: voice-pulse 1.2s ease-in-out infinite; }
+.voice-button.is-busy { color: var(--accent-dark); }
+.voice-status { margin: 0 0 8px; color: var(--accent-dark); font-size: 10px; line-height: 1.5; }
+.voice-status[data-state="recording"] { color: #b64f49; }
+@keyframes voice-pulse { 50% { box-shadow: 0 0 0 4px rgba(182, 79, 73, .12); } }
 .send-button { display: grid; width: 29px; height: 29px; place-items: center; border: 0; border-radius: 9px; background: var(--accent); color: #fff; cursor: pointer; font-size: 18px; transition: background .16s, transform .16s; }
 .send-button:hover { transform: translateY(-1px); background: var(--accent-dark); }
 .send-button:disabled { cursor: wait; opacity: .55; }
@@ -328,6 +338,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .composer:focus-within { border-color: #76a997; box-shadow: 0 8px 25px rgba(26,44,37,.08); }
 .send-button { background: #438e7e; }
 .send-button:hover { background: #327366; }
+.voice-button:hover { border-color: #9ebdad; background: #eaf1eb; color: #327366; }
+.voice-status { color: #327366; }
+.voice-device-select { border-color: #d5dfd8; }
 .image-orb { border: 1px solid #d4e5d8; background: #eaf1eb; color: #438e7e; }
 .image-model-label { color: #75857b; }
 .generate-button { box-shadow: 0 5px 13px rgba(56,127,107,.14); }
@@ -428,5 +441,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .auth-story-copy h1 { font-size: 37px; }
   .auth-feature-list { font-size: 8px; }
   .auth-panel { padding-right: 20px; padding-left: 20px; }
+}
+
+@media (max-width: 390px) {
+  .composer-actions { gap: 6px; }
+  .voice-device-select { width: 82px; max-width: 82px; }
+  .composer-provider { display: none; }
 }
 

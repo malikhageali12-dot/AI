@@ -8,6 +8,14 @@ const projectDirectory = dirname(fileURLToPath(import.meta.url));
 const defaultChatModel = "openai/gpt-oss-120b";
 const maximumImageBytes = 20 * 1024 * 1024;
 const maximumImageResponseBytes = 28 * 1024 * 1024;
+const maximumVoiceBytes = 20 * 1024 * 1024;
+const voiceMimeTypes = new Map([
+  ["audio/webm", "webm"],
+  ["audio/ogg", "ogg"],
+  ["audio/mp4", "m4a"],
+  ["audio/mpeg", "mp3"],
+  ["audio/wav", "wav"],
+]);
 const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const base64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
@@ -258,6 +266,71 @@ function chatProviderError(status) {
   if (status === 404) return new HttpError(400, "model_unavailable", "Das eingestellte Groq-Modell ist nicht verfügbar. Prüfe GROQ_MODEL in deiner .env-Datei.");
   if (status >= 500) return new HttpError(502, "provider_unavailable", "Groq ist gerade nicht erreichbar. Versuche es später erneut.");
   return new HttpError(502, "provider_error", "Groq konnte die Anfrage nicht bearbeiten. Prüfe Schlüssel und Modell.");
+}
+
+async function readRawAudio(request, maximumBytes) {
+  const chunks = [];
+  let byteCount = 0;
+  for await (const chunk of request) {
+    byteCount += chunk.length;
+    if (byteCount > maximumBytes) {
+      request.resume();
+      throw new HttpError(413, "audio_too_large", "Die Aufnahme ist zu groß. Bitte sprich kürzer.");
+    }
+    chunks.push(chunk);
+  }
+  if (byteCount === 0) throw new HttpError(400, "empty_audio", "Es wurde keine Audioaufnahme empfangen.");
+  return Buffer.concat(chunks);
+}
+
+async function handleVoiceTranscription(request, response) {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) throw new HttpError(503, "voice_unavailable", "Die Groq-Spracherkennung ist gerade nicht konfiguriert.");
+
+  const mimeType = String(request.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+  const extension = voiceMimeTypes.get(mimeType);
+  if (!extension) throw new HttpError(415, "unsupported_audio", "Dieses Mikrofonformat wird nicht unterstützt.");
+
+  const audio = await readRawAudio(request, maximumVoiceBytes);
+  if (audio.length < 256) throw new HttpError(400, "empty_audio", "Ich habe nichts Verständliches aufgenommen. Bitte versuche es erneut.");
+
+  const form = new FormData();
+  form.append("file", new Blob([audio], { type: mimeType }), `malikai-aufnahme.${extension}`);
+  form.append("model", "whisper-large-v3-turbo");
+  form.append("language", "de");
+  form.append("response_format", "json");
+  form.append("temperature", "0");
+
+  let upstream;
+  try {
+    upstream = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new HttpError(504, "voice_timeout", "Die Spracherkennung hat zu lange gebraucht. Bitte versuche es erneut.");
+    }
+    throw new HttpError(502, "voice_network", "Groq ist gerade nicht erreichbar. Bitte versuche es erneut.");
+  }
+
+  if (!upstream.ok) {
+    if (upstream.status === 429) throw new HttpError(429, "voice_rate_limit", "Das Groq-Limit für Spracheingaben ist erreicht. Bitte warte kurz und versuche es erneut.");
+    if (upstream.status === 401 || upstream.status === 403) throw new HttpError(502, "voice_key", "Der Groq-Schlüssel für die Spracherkennung ist ungültig.");
+    if (upstream.status === 400 || upstream.status === 413 || upstream.status === 415) {
+      throw new HttpError(400, "voice_invalid_audio", "Groq konnte diese Aufnahme nicht lesen. Bitte versuche es mit einer neuen Aufnahme.");
+    }
+    throw new HttpError(502, "voice_provider", "Groq konnte die Aufnahme gerade nicht verarbeiten.");
+  }
+
+  let payload;
+  try { payload = await upstream.json(); }
+  catch { throw new HttpError(502, "voice_provider", "Groq hat kein gültiges Transkript zurückgegeben."); }
+  const text = typeof payload.text === "string" ? payload.text.trim() : "";
+  if (!text) throw new HttpError(422, "voice_empty_transcript", "Ich habe keine Sprache erkannt. Bitte sprich näher am Mikrofon.");
+  sendJson(response, 200, { text });
 }
 
 async function handleChat(request, response) {
@@ -523,6 +596,7 @@ async function handleRequest(request, response) {
     requireSameOriginBrowserRequest(request);
     requireAuthenticatedSession(request);
     if (url.pathname === "/api/chat") return await handleChat(request, response);
+    if (url.pathname === "/api/voice/transcribe") return await handleVoiceTranscription(request, response);
     if (url.pathname === "/api/images/generate") return await handleImageGeneration(request, response);
     throw new HttpError(404, "not_found", "Diese lokale API-Adresse wurde nicht gefunden.");
   }

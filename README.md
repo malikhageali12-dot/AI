@@ -1,6 +1,6 @@
-# Lumen Chat Web
+# MalikAI Web
 
-Eine passwortgeschützte Webversion von Lumen Chat mit Chat über Groq und Bildgenerierung über OpenAI. `index.html`, `style.css` und `script.js` bilden die Oberfläche. `server.mjs` stellt die Seite bereit und verwaltet Passwort, Sitzungen und API-Schlüssel serverseitig.
+Eine passwortgeschützte Webversion von MalikAI mit Chat über Groq und Bildgenerierung über OpenAI. `index.html`, `style.css` und `script.js` bilden die Oberfläche. `server.mjs` stellt die Seite bereit und verwaltet Passwort, Sitzungen und API-Schlüssel serverseitig.
 
 ## Lokal mit VS Code starten
 
@@ -47,7 +47,7 @@ Hinterlege diese Werte beim Hosting als **geheime Umgebungsvariablen**; lade `.e
 | `GROQ_MODEL` | Optional; Standard: `openai/gpt-oss-120b` |
 | `PORT` | Vom Anbieter bereitgestellter Port; lokal standardmäßig `4174` |
 
-Für einen eigenen Docker-Host kannst du das Image mit `docker build -t lumen-chat .` erstellen. Die Anwendung bindet im öffentlichen Modus an `0.0.0.0`, verlangt HTTPS für öffentliche Domains und akzeptiert nur den Host der konfigurierten Adresse. Verwende zunächst **eine Server-Instanz**: Sitzungen und Fehlversuchszähler liegen im Arbeitsspeicher und laufen beim Neustart ab.
+Für einen eigenen Docker-Host kannst du das Image mit `docker build -t malikai-chat .` erstellen. Die Anwendung bindet im öffentlichen Modus an `0.0.0.0`, verlangt HTTPS für öffentliche Domains und akzeptiert nur den Host der konfigurierten Adresse. Verwende zunächst **eine Server-Instanz**: Sitzungen und Fehlversuchszähler liegen im Arbeitsspeicher und laufen beim Neustart ab.
 
 Render Free ist für Tests geeignet: Nach 15 Minuten ohne Aufruf wird der Dienst angehalten; der erste Aufruf danach kann ungefähr eine Minute zum Aufwachen brauchen. Kostenlose Instanzen können außerdem neu gestartet werden. Das Hosting ist kostenlos, aber OpenAI-Bildanfragen können weiterhin API-Kosten verursachen. Details stehen in der [Render-Dokumentation zu kostenlosen Diensten](https://render.com/docs/free).
 
@@ -56,6 +56,12 @@ Der Link ist öffentlich erreichbar, aber Anmeldung, Chat, Bildgenerierung und S
 Das Passwort gilt gemeinsam für alle Besucher. Wer es kennt, kann die App nutzen. Chat-Anfragen werden an Groq gesendet. Für Bildanfragen erscheint jedes Mal eine Kostenbestätigung; die Bildqualität startet bei **Hoch** und OpenAI kann die Nutzung berechnen. Siehe die aktuelle [OpenAI-Preisübersicht](https://developers.openai.com/api/docs/pricing).
 
 Gespräche liegen im Browser-Speicher des jeweiligen Geräts und sind dort nicht verschlüsselt. Auf einem geteilten Gerät können andere Personen den Verlauf im selben Browser sehen. Generierte Bilder bleiben bis zum Neuladen in der Vorschau und lassen sich über **PNG speichern** herunterladen.
+
+## Sprachchat und Headset
+
+Wähle neben dem Mikrofonknopf dein Headset-Mikrofon oder **Standardmikrofon**. Ein Klick startet die Aufnahme, ein zweiter Klick beendet sie und sendet das Transkript automatisch an den Chat. Antworten auf gesprochene Fragen werden über das Standard-Audiogerät des Browsers vorgelesen. Erlaube den Mikrofonzugriff, wenn der Browser danach fragt; die öffentliche Seite benötigt HTTPS.
+
+Die Aufnahme wird zur Erkennung an Groq übertragen und von MalikAI nicht gespeichert. Gespeichert wird nur das Transkript im Browser-Chatverlauf. Groq-Limits und mögliche Kosten richten sich nach deinem Konto.
 
 ## API-Schlüssel
 

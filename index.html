@@ -142,10 +142,11 @@
 
         <footer class="composer-wrap" id="chatComposer">
           <form class="composer" id="chatForm">
+            <p class="voice-status" id="voiceStatus" role="status" aria-live="polite" hidden></p>
             <textarea id="chatInput" rows="1" maxlength="8000" placeholder="Frag MalikAI etwas …" aria-label="Nachricht an MalikAI" required></textarea>
-            <div class="composer-bottom"><span class="composer-hint"><span aria-hidden="true">↵</span> Enter zum Senden · Shift + Enter für eine neue Zeile</span><div class="composer-actions"><span class="composer-provider"><span class="model-dot"></span> Groq</span><button class="send-button" id="sendButton" type="submit" aria-label="Nachricht senden"><span aria-hidden="true">↑</span></button><button class="stop-button" id="stopButton" type="button" hidden>Stoppen <span aria-hidden="true">■</span></button></div></div>
+            <div class="composer-bottom"><span class="composer-hint"><span aria-hidden="true">↵</span> Enter zum Senden · Shift + Enter für eine neue Zeile</span><div class="composer-actions"><span class="composer-provider"><span class="model-dot"></span> Groq</span><select class="voice-device-select" id="voiceInputDevice" aria-label="Mikrofon auswählen" title="Mikrofon auswählen"><option value="">Standardmikrofon</option></select><button class="voice-button" id="voiceButton" type="button" aria-label="Mit MalikAI sprechen" title="Sprachfrage aufnehmen"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v4m-4 0h8"></path></svg></button><button class="send-button" id="sendButton" type="submit" aria-label="Nachricht senden"><span aria-hidden="true">↑</span></button><button class="stop-button" id="stopButton" type="button" hidden>Stoppen <span aria-hidden="true">■</span></button></div></div>
           </form>
-          <p class="composer-disclaimer">MalikAI kann sich irren. Prüfe wichtige Informationen bitte selbst.</p>
+          <p class="composer-disclaimer">MalikAI kann sich irren. Sprache wird zur Transkription an Groq gesendet; Limits und mögliche Kosten hängen von deinem Groq-Konto ab. Antworten auf Sprachfragen werden über dein Standard-Audiogerät vorgelesen.</p>
         </footer>
       </main>
     </div>

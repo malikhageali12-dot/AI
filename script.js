@@ -19,6 +19,9 @@ const chatInput = document.querySelector("#chatInput");
 const chatForm = document.querySelector("#chatForm");
 const sendButton = document.querySelector("#sendButton");
 const stopButton = document.querySelector("#stopButton");
+const voiceStatus = document.querySelector("#voiceStatus");
+const voiceButton = document.querySelector("#voiceButton");
+const voiceInputDevice = document.querySelector("#voiceInputDevice");
 const imageForm = document.querySelector("#imageForm");
 const imagePrompt = document.querySelector("#imagePrompt");
 const imageQuality = document.querySelector("#imageQuality");
@@ -51,6 +54,16 @@ const state = {
   theme: readTheme(),
   status: null,
   imageBusy: false,
+  voiceMode: "idle",
+};
+
+const voiceState = {
+  recorder: null,
+  stream: null,
+  chunks: [],
+  timer: null,
+  limitTimer: null,
+  selectedDeviceId: localStorage.getItem("malikai.voice.device") || "",
 };
 
 function readTheme() {
@@ -505,7 +518,208 @@ function setChatBusy(busy) {
   chatInput.disabled = busy;
   sendButton.hidden = busy;
   stopButton.hidden = !busy;
+  voiceButton.disabled = busy || state.voiceMode === "transcribing";
+  voiceInputDevice.disabled = busy || state.voiceMode !== "idle";
 }
+
+function setVoiceStatus(mode, message = "") {
+  state.voiceMode = mode;
+  voiceStatus.textContent = message;
+  voiceStatus.hidden = !message;
+  voiceStatus.dataset.state = mode;
+  voiceButton.classList.toggle("is-recording", mode === "recording");
+  voiceButton.classList.toggle("is-busy", mode === "transcribing");
+  voiceButton.setAttribute("aria-pressed", String(mode === "recording"));
+  voiceButton.setAttribute("aria-label", mode === "recording" ? "Aufnahme beenden und senden" : "Mit MalikAI sprechen");
+  voiceButton.title = mode === "recording" ? "Aufnahme beenden und senden" : "Sprachfrage aufnehmen";
+  voiceButton.disabled = Boolean(state.streamController) || mode === "starting" || mode === "transcribing";
+  voiceInputDevice.disabled = Boolean(state.streamController) || mode !== "idle";
+}
+
+async function refreshVoiceDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  let inputs = [];
+  try { inputs = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "audioinput"); }
+  catch { return; }
+  const selected = voiceState.selectedDeviceId;
+  voiceInputDevice.replaceChildren(new Option("Standardmikrofon", ""));
+  inputs.forEach((device, index) => {
+    const name = device.label || `Mikrofon ${index + 1}`;
+    voiceInputDevice.append(new Option(name, device.deviceId));
+  });
+  if (selected && inputs.some((device) => device.deviceId === selected)) {
+    voiceInputDevice.value = selected;
+  } else if (selected) {
+    voiceState.selectedDeviceId = "";
+    voiceInputDevice.value = "";
+    localStorage.removeItem("malikai.voice.device");
+  }
+}
+
+function stopVoiceTracks() {
+  clearInterval(voiceState.timer);
+  clearTimeout(voiceState.limitTimer);
+  voiceState.timer = null;
+  voiceState.limitTimer = null;
+  voiceState.stream?.getTracks().forEach((track) => track.stop());
+  voiceState.stream = null;
+}
+
+function speechTextForReply(markdown) {
+  const slash = String.fromCharCode(92);
+  const tick = String.fromCharCode(96);
+  const parts = String(markdown).split(tick.repeat(3));
+  let text = parts.filter((_part, index) => index % 2 === 0).join(" Codeblock ausgelassen. ");
+  text = text
+    .replaceAll(slash + "sqrt[3]", "Kubikwurzel aus ")
+    .replaceAll(slash + "sqrt", "Wurzel aus ")
+    .replaceAll(slash + "frac", " geteilt durch ")
+    .replaceAll(slash + "times", " mal ")
+    .replaceAll(slash + "cdot", " mal ")
+    .replaceAll(slash + "leq", " kleiner oder gleich ")
+    .replaceAll(slash + "geq", " größer oder gleich ")
+    .replaceAll(slash + "neq", " ungleich ")
+    .replaceAll(slash + "pi", " Pi ")
+    .replaceAll(slash + "infty", " unendlich ")
+    .replaceAll(slash + "[", " ").replaceAll(slash + "]", " ")
+    .replaceAll(slash + "(", " ").replaceAll(slash + ")", " ")
+    .replaceAll(slash, " ").replaceAll("{", " ").replaceAll("}", " ")
+    .replaceAll("^", " hoch ").replaceAll("_", " Index ")
+    .replaceAll(tick, "").replaceAll("#", " ").replaceAll("*", "")
+    .replaceAll(">", " ").replaceAll("$", " ");
+  for (const character of [String.fromCharCode(10), String.fromCharCode(13), String.fromCharCode(9)]) {
+    text = text.replaceAll(character, " ");
+  }
+  return text.split(" ").filter(Boolean).join(" ");
+}
+
+function speakVoiceReply(markdown) {
+  const text = speechTextForReply(markdown);
+  if (!text || !window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+    setVoiceStatus("idle", text ? "Die Audioausgabe wird von diesem Browser nicht unterstützt." : "");
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  const germanVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("de"));
+  utterance.lang = germanVoice?.lang || "de-DE";
+  if (germanVoice) utterance.voice = germanVoice;
+  utterance.onstart = () => setVoiceStatus("speaking", "MalikAI antwortet über dein Standard-Audiogerät …");
+  utterance.onend = () => setVoiceStatus("idle");
+  utterance.onerror = () => setVoiceStatus("idle", "Die Antwort konnte nicht vorgelesen werden.");
+  window.speechSynthesis.speak(utterance);
+}
+
+async function toggleVoiceRecording() {
+  if (state.voiceMode === "recording") {
+    voiceState.recorder?.stop();
+    return;
+  }
+  if (state.voiceMode === "speaking") {
+    window.speechSynthesis?.cancel();
+    setVoiceStatus("idle");
+  }
+  if (state.voiceMode !== "idle" || state.streamController) return;
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    setVoiceStatus("idle", "Dieser Browser unterstützt keine Mikrofonaufnahme. Öffne MalikAI in Chrome oder Edge.");
+    return;
+  }
+
+  window.speechSynthesis?.cancel();
+  setVoiceStatus("starting", "Mikrofon wird geöffnet …");
+  try {
+    const constraints = { audio: {
+      ...(voiceState.selectedDeviceId ? { deviceId: { exact: voiceState.selectedDeviceId } } : {}),
+      echoCancellation: true, noiseSuppression: true, autoGainControl: true,
+    } };
+    voiceState.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    await refreshVoiceDevices();
+    const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg", "audio/mp4"]
+      .find((type) => MediaRecorder.isTypeSupported(type));
+    voiceState.recorder = new MediaRecorder(voiceState.stream, mimeType ? { mimeType } : undefined);
+    voiceState.chunks = [];
+    voiceState.recorder.addEventListener("dataavailable", (event) => { if (event.data.size) voiceState.chunks.push(event.data); });
+    voiceState.recorder.addEventListener("error", () => {
+      stopVoiceTracks();
+      setVoiceStatus("idle", "Die Mikrofonaufnahme ist fehlgeschlagen. Prüfe das ausgewählte Headset.");
+    }, { once: true });
+    voiceState.recorder.addEventListener("stop", () => { void finishVoiceRecording(); }, { once: true });
+    voiceState.recorder.start(250);
+    let seconds = 0;
+    const updateRecordingStatus = () => {
+      voiceStatus.textContent = `Aufnahme läuft · ${seconds}s · erneut tippen zum Senden`;
+      seconds += 1;
+    };
+    updateRecordingStatus();
+    voiceState.timer = setInterval(updateRecordingStatus, 1000);
+    voiceState.limitTimer = setTimeout(() => voiceState.recorder?.stop(), 120_000);
+    setVoiceStatus("recording", voiceStatus.textContent);
+  } catch (error) {
+    stopVoiceTracks();
+    const denied = error instanceof DOMException && error.name === "NotAllowedError";
+    const missing = error instanceof DOMException && ["NotFoundError", "OverconstrainedError"].includes(error.name);
+    setVoiceStatus("idle", denied
+      ? "Mikrofonzugriff verweigert. Erlaube MalikAI den Mikrofonzugriff in den Browser- oder Windows-Einstellungen."
+      : missing
+        ? "Das ausgewählte Mikrofon ist nicht verfügbar. Wähle ein anderes Headset-Mikrofon."
+        : "Das Mikrofon konnte nicht geöffnet werden. Prüfe die Berechtigung und versuche es erneut.");
+    await refreshVoiceDevices();
+  }
+}
+
+async function finishVoiceRecording() {
+  const recorder = voiceState.recorder;
+  const chunks = voiceState.chunks;
+  voiceState.recorder = null;
+  voiceState.chunks = [];
+  stopVoiceTracks();
+  const blob = new Blob(chunks, { type: recorder?.mimeType || "audio/webm" });
+  if (blob.size < 256) {
+    setVoiceStatus("idle", "Ich habe nichts Verständliches gehört. Bitte sprich näher am Mikrofon.");
+    return;
+  }
+  if (blob.size > 20 * 1024 * 1024) {
+    setVoiceStatus("idle", "Die Aufnahme war zu groß. Bitte sprich kürzer und versuche es erneut.");
+    return;
+  }
+
+  setVoiceStatus("transcribing", "Sprache wird erkannt …");
+  try {
+    const response = await fetch("/api/voice/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": blob.type || "audio/webm" },
+      credentials: "same-origin",
+      body: blob,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 401) showAuthGate("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
+      throw new Error(payload.error || `Spracherkennung fehlgeschlagen (${response.status}).`);
+    }
+    const transcript = typeof payload.text === "string" ? payload.text.trim() : "";
+    if (!transcript) throw new Error("Ich habe keine Sprache erkannt. Bitte sprich näher am Mikrofon.");
+    if (transcript.length > 8000) throw new Error("Das Transkript ist zu lang. Bitte nimm eine kürzere Frage auf.");
+    setVoiceStatus("idle", "MalikAI antwortet …");
+    const completed = await sendChatMessage(transcript, { speakResponse: true });
+    if (!completed) setVoiceStatus("idle");
+  } catch (error) {
+    setVoiceStatus("idle", error instanceof Error ? error.message : "Die Spracheingabe ist fehlgeschlagen.");
+  }
+}
+
+voiceButton.addEventListener("click", () => void toggleVoiceRecording());
+voiceInputDevice.addEventListener("change", () => {
+  voiceState.selectedDeviceId = voiceInputDevice.value;
+  if (voiceState.selectedDeviceId) localStorage.setItem("malikai.voice.device", voiceState.selectedDeviceId);
+  else localStorage.removeItem("malikai.voice.device");
+});
+navigator.mediaDevices?.addEventListener?.("devicechange", () => void refreshVoiceDevices());
+window.addEventListener("beforeunload", () => {
+  if (voiceState.recorder?.state === "recording") voiceState.recorder.stop();
+  stopVoiceTracks();
+  window.speechSynthesis?.cancel();
+});
+void refreshVoiceDevices();
 
 function messagesForRequest(messages) {
   const selected = [];
@@ -519,9 +733,9 @@ function messagesForRequest(messages) {
   return selected;
 }
 
-async function sendChatMessage(content) {
+async function sendChatMessage(content, { speakResponse = false } = {}) {
   const text = content.trim();
-  if (!text || state.streamController) return;
+  if (!text || state.streamController) return false;
   showChatFeedback("");
 
   let conversation = activeConversation();
@@ -544,6 +758,7 @@ async function sendChatMessage(content) {
   setChatBusy(true);
   render();
   let streamReader = null;
+  let responseCompleted = false;
 
   try {
     const response = await fetch("/api/chat", {
@@ -606,6 +821,7 @@ async function sendChatMessage(content) {
       }
     }
     if (doneFromProvider) await streamReader.cancel().catch(() => {});
+    responseCompleted = doneFromProvider && Boolean(assistantMessage.content.trim());
 
     conversation.updatedAt = Date.now();
     saveConversations();
@@ -626,6 +842,8 @@ async function sendChatMessage(content) {
     render();
     chatInput.focus();
   }
+  if (speakResponse && responseCompleted) speakVoiceReply(assistantMessage.content);
+  return responseCompleted;
 }
 
 function setImageBusy(busy) {

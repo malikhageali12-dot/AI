@@ -63,6 +63,9 @@ const voiceState = {
   chunks: [],
   timer: null,
   limitTimer: null,
+  speechController: null,
+  speechAudio: null,
+  speechUrl: null,
   selectedDeviceId: localStorage.getItem("malikai.voice.device") || "",
 };
 
@@ -593,21 +596,86 @@ function speechTextForReply(markdown) {
   return text.split(" ").filter(Boolean).join(" ");
 }
 
-function speakVoiceReply(markdown) {
-  const text = speechTextForReply(markdown);
-  if (!text || !window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
-    setVoiceStatus("idle", text ? "Die Audioausgabe wird von diesem Browser nicht unterstützt." : "");
-    return;
+function releaseVoicePlayback() {
+  const audio = voiceState.speechAudio;
+  voiceState.speechAudio = null;
+  if (audio) {
+    audio.onplay = null;
+    audio.onended = null;
+    audio.onerror = null;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
   }
+  if (voiceState.speechUrl) URL.revokeObjectURL(voiceState.speechUrl);
+  voiceState.speechUrl = null;
+}
+
+function stopVoiceSpeech() {
+  voiceState.speechController?.abort();
+  voiceState.speechController = null;
+  releaseVoicePlayback();
+  window.speechSynthesis?.cancel();
+}
+
+function speakWithSystemVoice(text) {
+  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") return false;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   const germanVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("de"));
   utterance.lang = germanVoice?.lang || "de-DE";
   if (germanVoice) utterance.voice = germanVoice;
-  utterance.onstart = () => setVoiceStatus("speaking", "MalikAI antwortet über dein Standard-Audiogerät …");
+  utterance.onstart = () => setVoiceStatus("speaking", "ElevenLabs ist noch nicht eingerichtet · MalikAI nutzt vorerst die Systemstimme …");
   utterance.onend = () => setVoiceStatus("idle");
   utterance.onerror = () => setVoiceStatus("idle", "Die Antwort konnte nicht vorgelesen werden.");
   window.speechSynthesis.speak(utterance);
+  return true;
+}
+
+async function speakVoiceReply(markdown) {
+  const text = speechTextForReply(markdown);
+  if (!text) {
+    setVoiceStatus("idle");
+    return;
+  }
+  stopVoiceSpeech();
+  const controller = new AbortController();
+  voiceState.speechController = controller;
+  setVoiceStatus("speaking", "ElevenLabs-Stimme wird vorbereitet …");
+  try {
+    const response = await fetch("/api/voice/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ text: text.slice(0, 5_000) }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      if (payload.code === "elevenlabs_missing_key" || payload.code === "elevenlabs_missing_voice") {
+        voiceState.speechController = null;
+        releaseVoicePlayback();
+        if (speakWithSystemVoice(text)) return;
+      }
+      if (response.status === 401) showAuthGate("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
+      throw new Error(payload.error || `ElevenLabs-Sprachausgabe fehlgeschlagen (${response.status}).`);
+    }
+    const audioBlob = await response.blob();
+    if (!audioBlob.size || !audioBlob.type.startsWith("audio/")) throw new Error("ElevenLabs hat keine gültige Audiodatei zurückgegeben.");
+    if (voiceState.speechController !== controller) return;
+    voiceState.speechUrl = URL.createObjectURL(audioBlob);
+    voiceState.speechAudio = new Audio(voiceState.speechUrl);
+    voiceState.speechAudio.onplay = () => setVoiceStatus("speaking", "MalikAI antwortet mit ElevenLabs …");
+    voiceState.speechAudio.onended = () => { releaseVoicePlayback(); setVoiceStatus("idle"); };
+    voiceState.speechAudio.onerror = () => { releaseVoicePlayback(); setVoiceStatus("idle", "Die ElevenLabs-Audioantwort konnte nicht abgespielt werden."); };
+    await voiceState.speechAudio.play();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
+    releaseVoicePlayback();
+    setVoiceStatus("idle", error instanceof Error ? error.message : "ElevenLabs konnte die Antwort nicht vorlesen.");
+  } finally {
+    if (voiceState.speechController === controller) voiceState.speechController = null;
+  }
 }
 
 async function toggleVoiceRecording() {
@@ -616,7 +684,7 @@ async function toggleVoiceRecording() {
     return;
   }
   if (state.voiceMode === "speaking") {
-    window.speechSynthesis?.cancel();
+    stopVoiceSpeech();
     setVoiceStatus("idle");
   }
   if (state.voiceMode !== "idle" || state.streamController) return;
@@ -625,7 +693,7 @@ async function toggleVoiceRecording() {
     return;
   }
 
-  window.speechSynthesis?.cancel();
+  stopVoiceSpeech();
   setVoiceStatus("starting", "Mikrofon wird geöffnet …");
   try {
     const constraints = { audio: {
@@ -717,7 +785,7 @@ navigator.mediaDevices?.addEventListener?.("devicechange", () => void refreshVoi
 window.addEventListener("beforeunload", () => {
   if (voiceState.recorder?.state === "recording") voiceState.recorder.stop();
   stopVoiceTracks();
-  window.speechSynthesis?.cancel();
+  stopVoiceSpeech();
 });
 void refreshVoiceDevices();
 

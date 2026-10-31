@@ -59,14 +59,15 @@ Gespräche liegen im Browser-Speicher des jeweiligen Geräts und sind dort nicht
 
 ## Sprachchat und Headset
 
-Wähle neben dem Mikrofonknopf dein Headset-Mikrofon oder **Standardmikrofon**. Ein Klick startet die Aufnahme, ein zweiter Klick beendet sie und sendet das Transkript automatisch an den Chat. Antworten auf gesprochene Fragen werden über das Standard-Audiogerät des Browsers vorgelesen. Erlaube den Mikrofonzugriff, wenn der Browser danach fragt; die öffentliche Seite benötigt HTTPS.
+Wähle neben dem Mikrofonknopf dein Headset-Mikrofon oder **Standardmikrofon**. Ein Klick startet die Aufnahme, ein zweiter Klick beendet sie und sendet das Transkript automatisch an den Chat. Antworten auf gesprochene Fragen werden mit der ElevenLabs-Stimme als MP3 erstellt und über das Standard-Audiogerät des Browsers abgespielt. Erlaube den Mikrofonzugriff, wenn der Browser danach fragt; die öffentliche Seite benötigt HTTPS.
 
-Die Aufnahme wird zur Erkennung an Groq übertragen und von MalikAI nicht gespeichert. Gespeichert wird nur das Transkript im Browser-Chatverlauf. Groq-Limits und mögliche Kosten richten sich nach deinem Konto.
+Die Aufnahme wird zur Erkennung an Groq übertragen und von MalikAI nicht gespeichert. Der Antworttext wird an ElevenLabs zur Vertonung übertragen. Audio wird von MalikAI nicht gespeichert. API-Limits und mögliche Kosten hängen von den Groq- und ElevenLabs-Tarifen ab. Für alle Besucher teilen sich API-Schlüssel und Kontingent der Website.
 
 ## API-Schlüssel
 
 - Groq: [console.groq.com/keys](https://console.groq.com/keys)
 - OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- ElevenLabs: [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys)
 
-Lokale Schlüssel gehören nur in `.env`. Diese Datei ist von Git und Docker ausgeschlossen. Bei einer öffentlichen Bereitstellung kommen Schlüssel ausschließlich in die geschützte Variablenverwaltung des Hosting-Anbieters. Widerrufe API-Schlüssel, die bereits in einem öffentlichen Chat oder Repository geteilt wurden, und verwende neue.
+Für ElevenLabs setze zusätzlich `ELEVENLABS_API_KEY` und `ELEVENLABS_VOICE_ID`. Die Voice-ID findest du in ElevenLabs unter **My Voices** bei den Aktionen der Stimme. Das Modell `eleven_flash_v2_5` ist für schnelle Antworten vorgesehen und unterstützt Deutsch. Lokale Schlüssel gehören nur in `.env`. Diese Datei ist von Git und Docker ausgeschlossen. Bei einer öffentlichen Bereitstellung kommen Schlüssel ausschließlich in die geschützte Variablenverwaltung des Hosting-Anbieters. Widerrufe API-Schlüssel, die bereits in einem öffentlichen Chat oder Repository geteilt wurden, und verwende neue.
 

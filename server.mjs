@@ -9,6 +9,7 @@ const defaultChatModel = "openai/gpt-oss-120b";
 const maximumImageBytes = 20 * 1024 * 1024;
 const maximumImageResponseBytes = 28 * 1024 * 1024;
 const maximumVoiceBytes = 20 * 1024 * 1024;
+const maximumSpeechTextCharacters = 5_000;
 const voiceMimeTypes = new Map([
   ["audio/webm", "webm"],
   ["audio/ogg", "ogg"],
@@ -115,7 +116,7 @@ function setSecurityHeaders(response) {
   response.setHeader("Referrer-Policy", "no-referrer");
   response.setHeader("Cache-Control", "no-store");
   if (publicOrigin.startsWith("https://")) response.setHeader("Strict-Transport-Security", "max-age=31536000");
-  response.setHeader("Content-Security-Policy", "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'");
+  response.setHeader("Content-Security-Policy", "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'");
 }
 
 function sendJson(response, status, payload) {
@@ -331,6 +332,49 @@ async function handleVoiceTranscription(request, response) {
   const text = typeof payload.text === "string" ? payload.text.trim() : "";
   if (!text) throw new HttpError(422, "voice_empty_transcript", "Ich habe keine Sprache erkannt. Bitte sprich näher am Mikrofon.");
   sendJson(response, 200, { text });
+}
+
+async function handleVoiceSpeech(request, response) {
+  const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
+  const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim();
+  if (!apiKey) throw new HttpError(503, "elevenlabs_missing_key", "Hinterlege ELEVENLABS_API_KEY zuerst in den Server-Umgebungsvariablen.");
+  if (!voiceId || !/^[A-Za-z0-9_-]{1,128}$/.test(voiceId)) {
+    throw new HttpError(503, "elevenlabs_missing_voice", "Hinterlege ELEVENLABS_VOICE_ID zuerst in den Server-Umgebungsvariablen.");
+  }
+
+  const body = await readJson(request, 40 * 1024);
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  if (!text || text.length > maximumSpeechTextCharacters) {
+    throw new HttpError(400, "invalid_speech_text", "Die Antwort muss zwischen 1 und 5.000 Zeichen lang sein.");
+  }
+
+  let upstream;
+  try {
+    upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, {
+      method: "POST",
+      headers: { "xi-api-key": apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" },
+      body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", language_code: "de" }),
+      signal: AbortSignal.timeout(45_000),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new HttpError(504, "elevenlabs_timeout", "ElevenLabs hat zu lange gebraucht. Bitte versuche es erneut.");
+    }
+    throw new HttpError(502, "elevenlabs_network", "ElevenLabs ist gerade nicht erreichbar. Bitte versuche es erneut.");
+  }
+
+  if (!upstream.ok) {
+    if (upstream.status === 401 || upstream.status === 403) throw new HttpError(502, "elevenlabs_key", "Der ElevenLabs-Schlüssel ist ungültig oder für Text-to-Speech nicht freigeschaltet.");
+    if (upstream.status === 404 || upstream.status === 422) throw new HttpError(400, "elevenlabs_voice", "Die ElevenLabs Voice-ID ist ungültig oder für dein Konto nicht verfügbar.");
+    if (upstream.status === 429) throw new HttpError(429, "elevenlabs_rate_limit", "Das ElevenLabs-Limit ist erreicht. Bitte warte kurz.");
+    if (upstream.status === 402) throw new HttpError(402, "elevenlabs_quota", "Dein ElevenLabs-Kontingent ist aufgebraucht. Prüfe dein Konto und den Tarif.");
+    throw new HttpError(502, "elevenlabs_provider", "ElevenLabs konnte die Stimme gerade nicht erzeugen.");
+  }
+
+  const audio = Buffer.from(await upstream.arrayBuffer());
+  if (!audio.length || audio.length > 20 * 1024 * 1024) throw new HttpError(502, "elevenlabs_audio", "ElevenLabs hat keine gültige Audiodatei zurückgegeben.");
+  response.writeHead(200, { "Content-Type": "audio/mpeg", "Content-Length": audio.length, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+  response.end(audio);
 }
 
 async function handleChat(request, response) {
@@ -597,6 +641,7 @@ async function handleRequest(request, response) {
     requireAuthenticatedSession(request);
     if (url.pathname === "/api/chat") return await handleChat(request, response);
     if (url.pathname === "/api/voice/transcribe") return await handleVoiceTranscription(request, response);
+    if (url.pathname === "/api/voice/speak") return await handleVoiceSpeech(request, response);
     if (url.pathname === "/api/images/generate") return await handleImageGeneration(request, response);
     throw new HttpError(404, "not_found", "Diese lokale API-Adresse wurde nicht gefunden.");
   }
